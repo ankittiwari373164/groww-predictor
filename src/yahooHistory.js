@@ -1,52 +1,69 @@
 'use strict';
 /**
- * yahooHistory.js — Yahoo Finance historical data (Node 18 compatible, v2 API)
- * Uses yahoo-finance2 v2.x which supports Node >= 16.
+ * yahooHistory.js — Direct Yahoo Finance v8 chart API (no library, Node 18+)
+ * Uses axios (already in project) to call Yahoo Finance directly.
+ * No npm package needed — works on any Node version.
  */
 
-const yf = require('yahoo-finance2').default;
+const axios = require('axios');
 const IST_OFFSET_S = (5 * 60 + 30) * 60;
 
-function dailyQuoteToCandles(quote) {
-  if (!quote || !quote.date || !quote.open || !quote.close) return [];
-  const dateMs   = new Date(quote.date).setUTCHours(0, 0, 0, 0);
-  const openEpoch  = Math.floor(dateMs / 1000) - IST_OFFSET_S + (9 * 60 + 15) * 60;
-  const closeEpoch = Math.floor(dateMs / 1000) - IST_OFFSET_S + (15 * 60 + 29) * 60;
-  const o = quote.open, h = quote.high, l = quote.low, c = quote.close;
-  const v = quote.volume || 0;
+function dailyQuoteToCandles(timestamp, o, h, l, c, v) {
+  if (!o || !c) return [];
+  const openEpoch  = timestamp - (timestamp % 86400) - IST_OFFSET_S + (9 * 60 + 15) * 60;
+  const closeEpoch = timestamp - (timestamp % 86400) - IST_OFFSET_S + (15 * 60 + 29) * 60;
+  const openVol = Math.round((v || 0) * 0.10);
   return [
-    [openEpoch,  o, h, l, o, Math.round(v * 0.10)],
-    [closeEpoch, o, h, l, c, v - Math.round(v * 0.10)],
+    [openEpoch,  o, h, l, o, openVol],
+    [closeEpoch, o, h, l, c, (v || 0) - openVol],
   ];
 }
 
-async function fetchYahooCandles(symbol, start, end) {
-  const p1 = start.toISOString().slice(0, 10);
-  const p2 = end.toISOString().slice(0, 10);
+async function fetchYahooChart(ticker, period1, period2) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`;
+  const { data } = await axios.get(url, {
+    params: { period1, period2, interval: '1d', events: 'history' },
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': 'application/json',
+    },
+    timeout: 15000,
+  });
+  const result = data?.chart?.result?.[0];
+  if (!result) throw new Error('No data returned');
+  const ts     = result.timestamp || [];
+  const q      = result.indicators?.quote?.[0] || {};
+  return ts.map((t, i) => ({
+    timestamp: t,
+    open: q.open?.[i], high: q.high?.[i], low: q.low?.[i],
+    close: q.close?.[i], volume: q.volume?.[i] || 0,
+  })).filter(r => r.open && r.close);
+}
 
-  // v2 API: yf.historical() returns array directly
-  async function tryTicker(ticker) {
-    const quotes = await yf.historical(ticker, {
-      period1: p1, period2: p2, interval: '1d',
-    }, { validateResult: false });
-    return quotes || [];
-  }
+async function fetchYahooCandles(symbol, start, end) {
+  const period1 = Math.floor(start.getTime() / 1000);
+  const period2 = Math.floor(end.getTime()   / 1000);
 
   let quotes = [];
-  try {
-    quotes = await tryTicker(`${symbol}.NS`);
-  } catch (e) {
+  let lastErr;
+
+  for (const ticker of [`${symbol}.NS`, `${symbol}.BO`]) {
     try {
-      quotes = await tryTicker(`${symbol}.BO`);
-    } catch (e2) {
-      throw new Error(`Yahoo Finance fetch failed for ${symbol}: ${e.message}`);
+      quotes = await fetchYahooChart(ticker, period1, period2);
+      if (quotes.length) break;
+    } catch (e) {
+      lastErr = e;
     }
   }
 
-  if (!quotes.length) throw new Error(`Yahoo Finance fetch failed for ${symbol}: No data found, symbol may be delisted`);
+  if (!quotes.length) {
+    throw new Error(`Yahoo Finance fetch failed for ${symbol}: ${lastErr?.message || 'No data found'}`);
+  }
 
   const candles = [];
-  for (const q of quotes) candles.push(...dailyQuoteToCandles(q));
+  for (const q of quotes) {
+    candles.push(...dailyQuoteToCandles(q.timestamp, q.open, q.high, q.low, q.close, q.volume));
+  }
   return candles;
 }
 
