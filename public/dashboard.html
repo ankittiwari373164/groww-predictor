@@ -1,354 +1,592 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Opening Bell — Most-Traded Predictor</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ORB Intraday Scanner — Groww</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0b0b0e; --panel:#141419; --panel-2:#1b1b22; --line:#26262f;
-    --ink:#ececf1; --muted:#8a8a99; --faint:#5a5a68;
-    --gold:#e8b04b; --gold-dim:#9a7530;
-    --up:#46d39a; --down:#ff6b6b;
-    --shadow:0 18px 50px -20px rgba(0,0,0,.8);
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",sans-serif;-webkit-font-smoothing:antialiased}
-  body{
-    min-height:100vh;
-    background-image:
-      radial-gradient(900px 500px at 85% -10%, rgba(232,176,75,.10), transparent 60%),
-      radial-gradient(700px 400px at 0% 110%, rgba(70,211,154,.05), transparent 55%);
-  }
-  /* film grain */
-  body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.035;z-index:99;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-  .num{font-family:"JetBrains Mono",monospace;font-feature-settings:"tnum" 1}
-  .wrap{max-width:1120px;margin:0 auto;padding:28px 24px 80px}
+:root{
+  --bg:#0b0b0e;--panel:#141419;--panel2:#1b1b22;--line:#26262f;
+  --ink:#ececf1;--muted:#8a8a99;--faint:#5a5a68;
+  --gold:#e8b04b;--gold-dim:#9a7530;
+  --up:#46d39a;--down:#ff6b6b;--wait:#7b8cde;
+  --shadow:0 18px 50px -20px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;
+  background-image:radial-gradient(900px 500px at 85% -10%,rgba(232,176,75,.10),transparent 60%),
+  radial-gradient(700px 400px at 0% 110%,rgba(70,211,154,.05),transparent 55%);}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.03;z-index:99;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.num{font-family:"JetBrains Mono",monospace;font-feature-settings:"tnum" 1}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 20px 80px}
 
-  /* header */
-  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
-  .brand{display:flex;align-items:baseline;gap:14px}
-  .brand .bell{font-family:"Fraunces";font-weight:900;font-size:13px;letter-spacing:.32em;color:var(--gold);text-transform:uppercase}
-  .brand h1{font-family:"Fraunces";font-weight:600;font-size:30px;letter-spacing:-.01em;line-height:1}
-  .brand h1 em{font-style:italic;color:var(--gold)}
-  .status{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-  .pill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);padding:7px 12px;border-radius:999px}
-  .pill b{color:var(--ink);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);box-shadow:0 0 0 0 rgba(70,211,154,.5)}
-  .dot.live{background:var(--up);animation:pulse 2s infinite}
-  .dot.off{background:var(--down)}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(70,211,154,.45)}70%{box-shadow:0 0 0 7px rgba(70,211,154,0)}100%{box-shadow:0 0 0 0 rgba(70,211,154,0)}}
-  .clock{font-family:"JetBrains Mono";font-size:13px;color:var(--gold)}
+/* ── Header ── */
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.brand{display:flex;align-items:baseline;gap:12px}
+.brand .label{font-family:"Fraunces";font-weight:900;font-size:12px;letter-spacing:.3em;color:var(--gold);text-transform:uppercase}
+.brand h1{font-family:"Fraunces";font-weight:600;font-size:26px;letter-spacing:-.01em}
+.brand h1 em{font-style:italic;color:var(--gold)}
+.hright{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);background:var(--panel);border:1px solid var(--line);padding:6px 11px;border-radius:999px}
+.pill b{color:var(--ink);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.dot.live{background:var(--up);animation:pulse 2s infinite}
+.dot.off{background:var(--down)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(70,211,154,.45)}70%{box-shadow:0 0 0 7px rgba(70,211,154,0)}100%{box-shadow:0 0 0 0 rgba(70,211,154,0)}}
+.clock{font-family:"JetBrains Mono";font-size:12px;color:var(--gold)}
 
-  /* hero */
-  .hero{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:20px;
-    padding:30px 32px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-  .hero::before{content:"";position:absolute;right:-40px;top:-60px;width:260px;height:260px;border-radius:50%;
-    background:radial-gradient(circle,rgba(232,176,75,.16),transparent 70%);}
-  .hero .label{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-dim);font-weight:700;margin-bottom:16px}
-  .heroGrid{display:grid;grid-template-columns:1.4fr 1fr;gap:28px;align-items:end}
-  @media(max-width:760px){.heroGrid{grid-template-columns:1fr;gap:22px}}
-  .pickName{font-family:"Fraunces";font-weight:900;font-size:clamp(46px,9vw,86px);line-height:.92;letter-spacing:-.02em}
-  .pickMeta{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
-  .tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:4px 9px}
-  .pickLink{color:var(--gold);text-decoration:none;font-size:13px;border-bottom:1px dotted var(--gold-dim);padding-bottom:1px}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .stat{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:13px;padding:14px 15px}
-  .stat .k{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
-  .stat .v{font-family:"JetBrains Mono";font-size:22px;font-weight:500}
-  .stat .v small{font-size:12px;color:var(--muted)}
-  .conf{grid-column:1/-1}
-  .confBar{height:9px;border-radius:6px;background:rgba(0,0,0,.35);overflow:hidden;margin-top:4px}
-  .confBar > i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--gold-dim),var(--gold));width:0;transition:width 1s cubic-bezier(.2,.8,.2,1)}
-  .up{color:var(--up)} .down{color:var(--down)}
+/* ── Tabs ── */
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;width:fit-content}
+.tab{font-family:"Hanken Grotesk";font-size:13px;font-weight:600;padding:8px 18px;border-radius:9px;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:.15s}
+.tab.on{background:var(--panel2);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.4)}
 
-  .actions{display:flex;gap:12px;align-items:center;margin:20px 0 30px;flex-wrap:wrap}
-  button.run{font-family:"Hanken Grotesk";font-weight:700;font-size:14px;letter-spacing:.02em;color:#1a1407;
-    background:linear-gradient(180deg,var(--gold),#c8923a);border:none;padding:13px 22px;border-radius:11px;cursor:pointer;
-    box-shadow:0 10px 24px -10px rgba(232,176,75,.7);transition:transform .12s,box-shadow .2s}
-  button.run:hover{transform:translateY(-1px)}
-  button.run:disabled{opacity:.55;cursor:wait;transform:none}
-  button.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);padding:12px 18px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13px}
-  button.ghost:hover{color:var(--ink);border-color:var(--faint)}
-  .hint{font-size:12.5px;color:var(--faint)}
+/* ── Actions ── */
+.actions{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+button.run{font-family:"Hanken Grotesk";font-weight:700;font-size:13px;color:#1a1407;
+  background:linear-gradient(180deg,var(--gold),#c8923a);border:none;padding:11px 20px;border-radius:10px;cursor:pointer;
+  box-shadow:0 8px 20px -8px rgba(232,176,75,.7);transition:transform .12s,box-shadow .2s}
+button.run:hover{transform:translateY(-1px)}
+button.run:disabled{opacity:.5;cursor:wait;transform:none}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);padding:10px 16px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:12px}
+button.ghost:hover{color:var(--ink);border-color:var(--faint)}
+.hint{font-size:12px;color:var(--faint)}
+.aof{font-size:11.5px;color:var(--faint);font-family:"JetBrains Mono"}
 
-  /* sections */
-  h2{font-family:"Fraunces";font-weight:600;font-size:19px;margin:34px 0 14px;letter-spacing:-.01em}
-  h2 span{color:var(--faint);font-family:"JetBrains Mono";font-size:12px;font-weight:400;margin-left:8px}
+/* ── Signal summary bar ── */
+.sumbar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.sumbadge{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;border:1px solid var(--line);background:var(--panel)}
+.sumbadge .sk{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.sumbadge .sv{font-family:"JetBrains Mono";font-size:20px;font-weight:500}
+.sumbadge.buy{border-color:rgba(70,211,154,.3);background:rgba(70,211,154,.06)}
+.sumbadge.sell{border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.06)}
+.sumbadge.wait{border-color:rgba(123,140,222,.3);background:rgba(123,140,222,.06)}
 
-  /* table */
-  .tableCard{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-  table{width:100%;border-collapse:collapse}
-  th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:left;padding:13px 16px;background:var(--panel-2);font-weight:600}
-  th.r,td.r{text-align:right}
-  td{padding:13px 16px;border-top:1px solid var(--line);font-size:14px}
-  tbody tr{transition:background .15s}
-  tbody tr:hover{background:var(--panel-2)}
-  tbody tr.lead td{background:rgba(232,176,75,.06)}
-  .rk{font-family:"JetBrains Mono";color:var(--faint);width:34px}
-  .rk.gold{color:var(--gold);font-weight:700}
-  .sym{font-weight:600}
-  .barCell{position:relative;min-width:150px}
-  .barCell .bar{position:absolute;left:16px;bottom:6px;height:4px;border-radius:3px;background:linear-gradient(90deg,var(--gold-dim),var(--gold));opacity:.85}
+/* ── Filter bar ── */
+.filterbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fbtn{font-family:inherit;font-size:12px;letter-spacing:.04em;color:var(--muted);background:var(--panel);border:1px solid var(--line);padding:6px 13px;border-radius:999px;cursor:pointer;transition:.15s}
+.fbtn.on{color:var(--ink);border-color:var(--gold-dim);background:rgba(232,176,75,.08)}
+.fcount{font-size:12px;color:var(--faint);margin-left:auto;font-family:"JetBrains Mono"}
 
-  /* backtest */
-  .btGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  @media(max-width:680px){.btGrid{grid-template-columns:1fr}}
-  .btCard{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px}
-  .btCard.best{border-color:var(--gold-dim);box-shadow:inset 0 0 0 1px rgba(232,176,75,.25)}
-  .btCard h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;justify-content:space-between}
-  .btCard h3 .best-badge{color:var(--gold);font-size:10px}
-  .btRow{display:flex;justify-content:space-between;align-items:baseline;margin-top:13px}
-  .btRow .k{font-size:12px;color:var(--faint)}
-  .btRow .v{font-family:"JetBrains Mono";font-size:20px;font-weight:500}
+/* ── ORB Cards ── */
+.cardGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.ocard{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--faint);border-radius:13px;padding:15px 16px;transition:box-shadow .2s}
+.ocard:hover{box-shadow:var(--shadow)}
+.ocard.buy{border-left-color:var(--up)}
+.ocard.sell{border-left-color:var(--down)}
+.ocard.wait{border-left-color:var(--wait)}
 
-  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:34px;text-align:center;color:var(--muted)}
-  .empty b{color:var(--ink)} .empty code{font-family:"JetBrains Mono";color:var(--gold);background:rgba(0,0,0,.3);padding:2px 7px;border-radius:5px;font-size:12.5px}
-  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--panel-2);border:1px solid var(--line);
-    color:var(--ink);padding:13px 20px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transition:.3s;font-size:13.5px;z-index:200;max-width:90vw}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .toast.err{border-color:var(--down)}
-  footer{margin-top:40px;color:var(--faint);font-size:12px;line-height:1.7;border-top:1px solid var(--line);padding-top:18px}
-  .reveal{opacity:0;transform:translateY(10px);animation:rise .6s forwards}
-  @keyframes rise{to{opacity:1;transform:none}}
+.ocard .ctop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.ocard .csym{font-weight:700;font-size:16px}
+.ocard .crank{font-family:"JetBrains Mono";font-size:10.5px;color:var(--faint)}
+.ocard .csig{font-family:"Fraunces";font-weight:900;font-size:14px;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+.ocard .csig.buy{color:var(--up);background:rgba(70,211,154,.12)}
+.ocard .csig.sell{color:var(--down);background:rgba(255,107,107,.12)}
+.ocard .csig.wait{color:var(--wait);background:rgba(123,140,222,.12)}
 
-  /* stock card grid */
-  .filterbar{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap;align-items:center}
-  .fbtn{font-family:inherit;font-size:12px;letter-spacing:.04em;color:var(--muted);background:var(--panel);border:1px solid var(--line);padding:7px 14px;border-radius:999px;cursor:pointer}
-  .fbtn.on{color:var(--ink);border-color:var(--gold-dim);background:rgba(232,176,75,.08)}
-  .fcount{font-size:12px;color:var(--faint);margin-left:auto;font-family:"JetBrains Mono"}
-  .cardGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-  .scard{background:var(--panel);border:1px solid var(--line);border-left-width:3px;border-radius:13px;padding:14px 15px}
-  .scard.buy{border-left-color:var(--up)} .scard.sell{border-left-color:var(--down)} .scard.neutral{border-left-color:var(--faint)}
-  .scard .top{display:flex;justify-content:space-between;align-items:baseline}
-  .scard .sy{font-weight:700;font-size:16px;letter-spacing:.01em}
-  .scard .rkbadge{font-family:"JetBrains Mono";font-size:11px;color:var(--faint)}
-  .scard .sg{font-family:"Fraunces";font-weight:900;font-size:15px;letter-spacing:.04em}
-  .scard .sg.buy{color:var(--up)} .scard .sg.sell{color:var(--down)} .scard .sg.neutral{color:var(--faint)}
-  .scard .px{font-family:"JetBrains Mono";font-size:18px;margin:8px 0 2px}
-  .scard .lvls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
-  .scard .lvl{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
-  .scard .lvl .lk{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
-  .scard .lvl .lv{font-family:"JetBrains Mono";font-size:12.5px;margin-top:2px}
-  .scard .ind{display:flex;gap:10px;margin-top:9px;font-family:"JetBrains Mono";font-size:11px;color:var(--muted);flex-wrap:wrap}
-  .scard .proj{font-size:11px;color:var(--faint);margin-top:8px}
+.ocard .cprice{font-family:"JetBrains Mono";font-size:20px;font-weight:500;margin-bottom:4px}
+.ocard .cchg{font-size:12px;font-family:"JetBrains Mono"}
+.up{color:var(--up)} .down{color:var(--down)}
+
+/* ORB range visual */
+.orbvis{position:relative;height:36px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:8px;margin:10px 0;overflow:hidden}
+.orbvis .orbzone{position:absolute;top:0;bottom:0;background:rgba(123,140,222,.15);border-left:1px solid rgba(123,140,222,.4);border-right:1px solid rgba(123,140,222,.4)}
+.orbvis .priceline{position:absolute;top:0;bottom:0;width:2px;border-radius:2px;transition:left .4s}
+.orbvis .priceline.buy{background:var(--up)}
+.orbvis .priceline.sell{background:var(--down)}
+.orbvis .priceline.wait{background:var(--gold)}
+.orbvis .lbl{position:absolute;font-family:"JetBrains Mono";font-size:9px;color:var(--faint);top:50%;transform:translateY(-50%)}
+.orbvis .lbl.lh{right:4px}
+.orbvis .lbl.ll{left:4px}
+
+/* Levels grid */
+.lvls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.lvl{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:center}
+.lvl .lk{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+.lvl .lv{font-family:"JetBrains Mono";font-size:12.5px}
+
+/* Indicators row */
+.inds{display:flex;gap:8px;margin-top:9px;font-family:"JetBrains Mono";font-size:10.5px;color:var(--muted);flex-wrap:wrap}
+.ind-badge{background:rgba(0,0,0,.2);border:1px solid var(--line);padding:2px 7px;border-radius:5px}
+
+/* Distance badge */
+.dist{font-size:11px;color:var(--faint);margin-top:6px;font-family:"JetBrains Mono"}
+.dist b{color:var(--gold)}
+
+/* ── Morning rank table ── */
+.tableCard{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:left;padding:11px 14px;background:var(--panel2);font-weight:600}
+th.r,td.r{text-align:right}
+td{padding:11px 14px;border-top:1px solid var(--line);font-size:13px}
+tbody tr:hover{background:var(--panel2)}
+tbody tr.lead td{background:rgba(232,176,75,.05)}
+.rk{font-family:"JetBrains Mono";color:var(--faint);font-size:12px}
+.rk.gold{color:var(--gold);font-weight:700}
+.sym{font-weight:600}
+.sigtag{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:5px;font-weight:700}
+.sigtag.buy{color:var(--up);background:rgba(70,211,154,.12)}
+.sigtag.sell{color:var(--down);background:rgba(255,107,107,.12)}
+.sigtag.neutral,.sigtag.wait{color:var(--faint);background:rgba(255,255,255,.05)}
+
+/* ── Hero ── */
+.hero{background:linear-gradient(160deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;
+  padding:26px 28px;box-shadow:var(--shadow);margin-bottom:20px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;right:-40px;top:-60px;width:240px;height:240px;border-radius:50%;
+  background:radial-gradient(circle,rgba(232,176,75,.14),transparent 70%)}
+.hero .hlabel{font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-dim);font-weight:700;margin-bottom:12px}
+.hgrid{display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:end}
+@media(max-width:680px){.hgrid{grid-template-columns:1fr}}
+.pickname{font-family:"Fraunces";font-weight:900;font-size:clamp(44px,8vw,80px);line-height:.92;letter-spacing:-.02em}
+.pickmeta{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.tag{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:3px 8px}
+.picklink{color:var(--gold);text-decoration:none;font-size:12px;border-bottom:1px dotted var(--gold-dim)}
+.hstats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hstat{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:11px;padding:12px 13px}
+.hstat .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.hstat .v{font-family:"JetBrains Mono";font-size:20px;font-weight:500}
+.hstat .v small{font-size:11px;color:var(--muted)}
+
+/* ── Backtest / Track ── */
+h2{font-family:"Fraunces";font-weight:600;font-size:18px;margin:28px 0 12px;letter-spacing:-.01em}
+h2 span{color:var(--faint);font-family:"JetBrains Mono";font-size:11px;font-weight:400;margin-left:6px}
+.btGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:640px){.btGrid{grid-template-columns:1fr}}
+.btCard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px}
+.btCard.best{border-color:var(--gold-dim);box-shadow:inset 0 0 0 1px rgba(232,176,75,.2)}
+.btCard h3{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;justify-content:space-between}
+.btRow{display:flex;justify-content:space-between;align-items:baseline;margin-top:11px}
+.btRow .k{font-size:11.5px;color:var(--faint)}
+.btRow .v{font-family:"JetBrains Mono";font-size:18px;font-weight:500}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:30px;text-align:center;color:var(--muted)}
+.empty b{color:var(--ink)} .empty code{font-family:"JetBrains Mono";color:var(--gold);background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;font-size:12px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--line);
+  color:var(--ink);padding:11px 18px;border-radius:11px;box-shadow:var(--shadow);opacity:0;transition:.3s;font-size:13px;z-index:200;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{border-color:var(--down)}
+footer{margin-top:36px;color:var(--faint);font-size:11.5px;line-height:1.7;border-top:1px solid var(--line);padding-top:16px}
+.reveal{opacity:0;transform:translateY(10px);animation:rise .5s forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+
+/* page sections */
+#page-intraday,#page-morning,#page-track{display:none}
+#page-intraday.active,#page-morning.active,#page-track.active{display:block}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="brand">
-      <span class="bell">◆ Opening Bell</span>
-      <h1>Most&#8209;Traded <em>Predictor</em></h1>
-    </div>
-    <div class="status">
-      <span class="pill"><span id="hdot" class="dot"></span> <span id="hstatus">connecting…</span></span>
-      <span class="pill">metric <b id="hmetric">—</b></span>
-      <span class="pill">model <b id="hmodel">—</b></span>
-      <span class="clock num" id="clock">--:--:-- IST</span>
-    </div>
-  </header>
 
-  <main id="main">
-    <div id="heroSlot"></div>
+<!-- Header -->
+<header>
+  <div class="brand">
+    <span class="label">◆ Opening Bell</span>
+    <h1>ORB <em>Intraday</em> Scanner</h1>
+  </div>
+  <div class="hright">
+    <span class="pill"><span id="hdot" class="dot"></span><span id="hstatus">connecting…</span></span>
+    <span class="pill">model <b id="hmodel">—</b></span>
+    <span class="clock num" id="clock">--:--:-- IST</span>
+  </div>
+</header>
 
-    <div class="actions reveal" style="animation-delay:.05s">
-      <button class="run" id="runBtn">▶ Run live prediction (09:25)</button>
-      <button class="ghost" id="refreshBtn">↻ Refresh</button>
-      <span class="hint" id="asOf"></span>
-    </div>
-
-    <h2>Predicted ranking <span id="rankCount"></span></h2>
-    <div id="tableSlot"></div>
-
-    <h2>Live track record <span>your real, measured accuracy</span></h2>
-    <div id="trackSlot"></div>
-
-    <h2>Backtest accuracy <span>out&#8209;of&#8209;sample</span></h2>
-    <div id="btSlot"></div>
-  </main>
-
-  <footer>
-    Conditional projection from the 09:15–09:25 window via the Groww API — not investment advice.
-    Run <code>build_dataset</code> then <code>backtest</code> on your own data to see real accuracy.
-  </footer>
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab on" onclick="switchTab('intraday')">⚡ Intraday ORB</button>
+  <button class="tab" onclick="switchTab('morning')">📊 Morning Rank</button>
+  <button class="tab" onclick="switchTab('track')">📈 Track Record</button>
 </div>
+
+<!-- ══════════════════════ INTRADAY TAB ══════════════════════ -->
+<div id="page-intraday" class="active">
+  <div class="actions">
+    <button class="run" id="scanBtn">⚡ Scan ORB now</button>
+    <button class="ghost" id="iRefreshBtn">↻ Refresh</button>
+    <span class="aof" id="iAsOf"></span>
+    <span class="hint" id="mktHint"></span>
+  </div>
+  <div id="sumbarSlot"></div>
+  <div class="filterbar" id="iFilterBar" style="display:none">
+    <button class="fbtn on" onclick="setIFilter('ALL')" id="ifALL">ALL</button>
+    <button class="fbtn" onclick="setIFilter('BUY')" id="ifBUY">🟢 BUY</button>
+    <button class="fbtn" onclick="setIFilter('SELL')" id="ifSELL">🔴 SELL</button>
+    <button class="fbtn" onclick="setIFilter('WAIT')" id="ifWAIT">⏳ WAIT</button>
+    <span class="fcount" id="iCount"></span>
+  </div>
+  <div id="orbSlot"></div>
+</div>
+
+<!-- ══════════════════════ MORNING RANK TAB ══════════════════════ -->
+<div id="page-morning">
+  <div class="actions">
+    <button class="run" id="runBtn">▶ Run morning prediction</button>
+    <button class="ghost" id="mRefreshBtn">↻ Refresh</button>
+    <span class="aof" id="mAsOf"></span>
+  </div>
+  <div id="heroSlot"></div>
+  <h2>All ranked stocks <span id="rankCount"></span></h2>
+  <div id="tableSlot"></div>
+  <h2>Backtest accuracy <span>out-of-sample</span></h2>
+  <div id="btSlot"></div>
+</div>
+
+<!-- ══════════════════════ TRACK RECORD TAB ══════════════════════ -->
+<div id="page-track">
+  <div id="trackSlot"></div>
+</div>
+
+</div><!-- /wrap -->
 <div class="toast" id="toast"></div>
 
 <script>
-const API = (location.protocol === "file:") ? "http://localhost:8000" : "";
+const API = location.protocol === "file:" ? "http://localhost:8000" : "";
 const $ = s => document.querySelector(s);
-const fmtCr = v => (v==null||isNaN(v)) ? "—" : Number(v).toLocaleString("en-IN",{maximumFractionDigits:1});
-const pct = v => (v==null||isNaN(v)) ? "" : (v>=0?"+":"") + Number(v).toFixed(2) + "%";
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = v => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("en-IN", {maximumFractionDigits:2});
+const fmtCr = v => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("en-IN", {maximumFractionDigits:1});
+const pct = v => v == null || isNaN(v) ? "" : (v >= 0 ? "+" : "") + Number(v).toFixed(2) + "%";
 
-function toast(msg, err){const t=$("#toast");t.textContent=msg;t.className="toast show"+(err?" err":"");setTimeout(()=>t.className="toast",3600);}
-
-function tickClock(){
-  const ist=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+5.5*3600000);
-  $("#clock").textContent=ist.toTimeString().slice(0,8)+" IST";
+// ── Clock ──
+function tickClock() {
+  const ist = new Date(Date.now() + new Date().getTimezoneOffset()*60000 + 5.5*3600000);
+  $("#clock").textContent = ist.toTimeString().slice(0,8) + " IST";
 }
-setInterval(tickClock,1000);tickClock();
+setInterval(tickClock, 1000); tickClock();
 
-async function getJSON(path,opts){const r=await fetch(API+path,opts);if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
+// ── Toast ──
+function toast(msg, err) {
+  const t = $("#toast");
+  t.textContent = msg; t.className = "toast show" + (err ? " err" : "");
+  setTimeout(() => t.className = "toast", 3600);
+}
 
-function renderHero(d){
-  const p=d&&d.most_traded_pick;
-  if(!p){
-    $("#heroSlot").innerHTML=`<div class="empty reveal"><p style="font-size:16px;margin-bottom:8px">No prediction yet.</p>
-      <p>Add your Groww credentials to <b>.env</b>, then click <b>Run live prediction</b> during market hours,
-      or run <code>python -m groww_predictor.predict_live</code> at 09:25 IST.</p></div>`;
-    $("#rankCount").textContent="";return;
+// ── API ──
+async function getJSON(path, opts) {
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+// ── Tab switching ──
+let _currentTab = "intraday";
+function switchTab(name) {
+  _currentTab = name;
+  $$(".tab").forEach((t, i) => t.classList.toggle("on", ["intraday","morning","track"][i] === name));
+  $$("[id^=page-]").forEach(p => p.classList.remove("active"));
+  $("#page-" + name).classList.add("active");
+  if (name === "morning") loadMorning();
+  if (name === "track") loadTrack();
+}
+window.switchTab = switchTab;
+
+// ══════════════ INTRADAY ══════════════
+let _iData = null, _iFilter = "ALL";
+
+function setIFilter(f) {
+  _iFilter = f;
+  $$(".fbtn[id^=if]").forEach(b => b.classList.toggle("on", b.id === "if" + f));
+  renderORBCards(_iData);
+}
+window.setIFilter = setIFilter;
+window.setIFilter = setIFilter;
+
+function renderSumbar(d) {
+  if (!d || !d.signals) { $("#sumbarSlot").innerHTML = ""; return; }
+  const s = d.signals;
+  const orbStatus = d.orb_formed
+    ? `<span style="color:var(--up);font-size:12px">✓ ORB formed</span>`
+    : `<span style="color:var(--gold);font-size:12px">⏳ ORB forming (09:15–09:25)</span>`;
+  $("#sumbarSlot").innerHTML = `
+    <div class="sumbar">
+      <div class="sumbadge buy"><span class="sk">BUY signals</span><span class="sv up">${s.buy}</span></div>
+      <div class="sumbadge sell"><span class="sk">SELL signals</span><span class="sv down">${s.sell}</span></div>
+      <div class="sumbadge wait"><span class="sk">Waiting</span><span class="sv" style="color:var(--wait)">${s.wait}</span></div>
+      <div class="sumbadge" style="margin-left:auto;gap:6px">${orbStatus}
+        <span style="font-size:11px;color:var(--faint);font-family:'JetBrains Mono'"> · ${d.scanned||0} scanned</span>
+      </div>
+    </div>`;
+}
+
+function orbBar(orb, lastPrice) {
+  if (!orb) return "";
+  const lo = orb.orb_low, hi = orb.orb_high;
+  const pad = (hi - lo) * 1.5;
+  const min = lo - pad, max = hi + pad;
+  const span = max - min || 1;
+  const loP = ((lo - min) / span * 100).toFixed(1);
+  const hiP = ((hi - min) / span * 100).toFixed(1);
+  const priceP = Math.max(1, Math.min(99, (lastPrice - min) / span * 100)).toFixed(1);
+  const cls = orb.signal === "BUY" ? "buy" : orb.signal === "SELL" ? "sell" : "wait";
+  return `<div class="orbvis">
+    <div class="orbzone" style="left:${loP}%;right:${(100-parseFloat(hiP)).toFixed(1)}%"></div>
+    <div class="priceline ${cls}" style="left:calc(${priceP}% - 1px)"></div>
+    <span class="lbl ll">₹${fmt(lo)}</span>
+    <span class="lbl lh">₹${fmt(hi)}</span>
+  </div>`;
+}
+
+function renderORBCards(d) {
+  if (!d || !d.stocks || !d.stocks.length) {
+    $("#orbSlot").innerHTML = `<div class="empty"><b>No intraday data yet.</b><br>Click <b>Scan ORB now</b> during market hours (09:15–15:30 IST).<br><br>
+      ORB (Opening Range Breakout) signals appear after 09:25 AM once the opening range is formed.</div>`;
+    $("#iFilterBar").style.display = "none";
+    return;
   }
-  const moveCls=p.open_ret_pct>=0?"up":"down";
-  const sig=(p.signal||"NEUTRAL");
-  const sigCls=sig==="BUY"?"up":(sig==="SELL"?"down":"");
-  const sigColor=sig==="BUY"?"var(--up)":(sig==="SELL"?"var(--down)":"var(--muted)");
-  $("#heroSlot").innerHTML=`
-   <div class="hero reveal">
-    <div class="label">Predicted most-traded stock today</div>
-    <div class="heroGrid">
-      <div>
-        <div class="pickName">${p.symbol}</div>
-        <div class="pickMeta">
-          <span class="tag" style="border-color:${sigColor};color:${sigColor}">${sig} lean</span>
-          <span class="tag">${d.metric||"turnover"}</span>
-          <span class="tag">${d.scanned||0} scanned</span>
-          <a class="pickLink" href="${p.groww_url}" target="_blank" rel="noopener">View on Groww ↗</a>
+  $("#iFilterBar").style.display = "flex";
+  const stocks = d.stocks.filter(s => {
+    const sig = s.orb?.signal || "WAIT";
+    return _iFilter === "ALL" || sig === _iFilter;
+  });
+  $("#iCount").textContent = `showing ${stocks.length} of ${d.stocks.length}`;
+  if (!stocks.length) {
+    $("#orbSlot").innerHTML = `<div class="empty">No ${_iFilter} signals right now.</div>`;
+    return;
+  }
+  const cards = stocks.map((s, i) => {
+    const orb = s.orb;
+    const sig = orb?.signal || "WAIT";
+    const cls = sig.toLowerCase();
+    const chgCls = (s.day_change_perc || 0) >= 0 ? "up" : "down";
+    const hasLevels = orb && sig !== "WAIT";
+    const distInfo = orb && sig === "WAIT" ? `
+      <div class="dist">
+        Break above <b>₹${fmt(orb.orb_high)}</b> for BUY · below <b>₹${fmt(orb.orb_low)}</b> for SELL
+      </div>` : "";
+    const lvls = hasLevels ? `
+      <div class="lvls">
+        <div class="lvl"><div class="lk">Entry</div><div class="lv">${orb.entry != null ? "₹"+fmt(orb.entry) : "—"}</div></div>
+        <div class="lvl"><div class="lk">Target</div><div class="lv up">${orb.target != null ? "₹"+fmt(orb.target) : "—"}</div></div>
+        <div class="lvl"><div class="lk">Stop</div><div class="lv down">${orb.stop != null ? "₹"+fmt(orb.stop) : "—"}</div></div>
+        <div class="lvl"><div class="lk">R:R</div><div class="lv">${orb.rr != null ? orb.rr+":1" : "—"}</div></div>
+        <div class="lvl"><div class="lk">Strength</div><div class="lv">${orb.signal_score || 0}%</div></div>
+        <div class="lvl"><div class="lk">Range</div><div class="lv">₹${fmt(orb.orb_range)}</div></div>
+      </div>` : (orb ? `
+      <div class="lvls">
+        <div class="lvl"><div class="lk">ORB High</div><div class="lv">₹${fmt(orb.orb_high)}</div></div>
+        <div class="lvl"><div class="lk">ORB Low</div><div class="lv">₹${fmt(orb.orb_low)}</div></div>
+        <div class="lvl"><div class="lk">Range</div><div class="lv">₹${fmt(orb.orb_range)}</div></div>
+      </div>` : "");
+    const filters = orb ? `
+      <div class="inds">
+        ${orb.volume_confirmed ? '<span class="ind-badge up">Vol ✓</span>' : '<span class="ind-badge">Vol weak</span>'}
+        ${orb.trend_confirmed  ? '<span class="ind-badge up">Trend ✓</span>' : '<span class="ind-badge">Trend weak</span>'}
+        ${s.rsi  != null ? `<span class="ind-badge">RSI ${s.rsi}</span>` : ""}
+        ${s.adx  != null ? `<span class="ind-badge">ADX ${s.adx}</span>` : ""}
+        ${s.atr  != null ? `<span class="ind-badge">ATR ₹${fmt(s.atr)}</span>` : ""}
+      </div>` : "";
+    return `<div class="ocard ${cls} reveal" style="animation-delay:${Math.min(i,12)*0.03}s">
+      <div class="ctop">
+        <div>
+          <div class="csym">${s.symbol} <span class="crank">#${i+1}</span></div>
+          <a href="${s.groww_url}" target="_blank" rel="noopener" style="font-size:10.5px;color:var(--gold-dim);text-decoration:none">View on Groww ↗</a>
+        </div>
+        <span class="csig ${cls}">${sig}</span>
+      </div>
+      <div class="cprice num">₹${fmt(s.last_price)} <span class="cchg ${chgCls}">${pct(s.day_change_perc)}</span></div>
+      ${orbBar(orb, s.last_price)}
+      ${lvls}
+      ${distInfo}
+      ${filters}
+      <div style="font-size:10.5px;color:var(--faint);margin-top:7px;font-family:'JetBrains Mono'">
+        Vol z-score: ${s.vol_zscore ?? "—"} · Proj. ₹${fmtCr(s.proj_full_turnover_cr)} Cr
+      </div>
+    </div>`;
+  }).join("");
+  $("#orbSlot").innerHTML = `<div class="cardGrid">${cards}</div>`;
+}
+
+async function loadIntraday() {
+  try {
+    const d = await getJSON("/intraday");
+    _iData = d;
+    const asOf = d.as_of ? "updated " + new Date(d.as_of).toLocaleTimeString() : "";
+    $("#iAsOf").textContent = asOf;
+    $("#mktHint").textContent = d.market_open ? "● Market open" : "● Market closed";
+    $("#mktHint").style.color = d.market_open ? "var(--up)" : "var(--faint)";
+    renderSumbar(d);
+    renderORBCards(d);
+  } catch (e) {
+    renderORBCards(null);
+  }
+}
+
+$("#scanBtn").onclick = async () => {
+  const b = $("#scanBtn"); b.disabled = true; b.textContent = "⏳ Scanning…";
+  try {
+    const d = await getJSON("/intraday/scan", { method: "POST" });
+    _iData = d; renderSumbar(d); renderORBCards(d);
+    toast("Scan complete — " + (d.signals?.buy || 0) + " BUY, " + (d.signals?.sell || 0) + " SELL signals");
+  } catch (e) { toast("Scan failed: " + e.message, true); }
+  finally { b.disabled = false; b.textContent = "⚡ Scan ORB now"; }
+};
+$("#iRefreshBtn").onclick = loadIntraday;
+
+// ══════════════ MORNING RANK ══════════════
+function renderHero(d) {
+  const p = d?.most_traded_pick;
+  if (!p) {
+    $("#heroSlot").innerHTML = `<div class="empty reveal"><p style="font-size:15px;margin-bottom:8px">No morning prediction yet.</p>
+      <p>Click <b>Run morning prediction</b> between 09:15–09:30 IST.</p></div>`;
+    return;
+  }
+  const sigCls = p.signal === "BUY" ? "up" : p.signal === "SELL" ? "down" : "";
+  const sigColor = p.signal === "BUY" ? "var(--up)" : p.signal === "SELL" ? "var(--down)" : "var(--muted)";
+  $("#heroSlot").innerHTML = `
+    <div class="hero reveal">
+      <div class="hlabel">Predicted most-traded stock today</div>
+      <div class="hgrid">
+        <div>
+          <div class="pickname">${p.symbol}</div>
+          <div class="pickmeta">
+            <span class="tag" style="border-color:${sigColor};color:${sigColor}">${p.signal} lean</span>
+            <span class="tag">${d.metric||"turnover"}</span>
+            <span class="tag">${d.scanned||0} scanned</span>
+            <a class="picklink" href="${p.groww_url}" target="_blank" rel="noopener">View on Groww ↗</a>
+          </div>
+        </div>
+        <div class="hstats">
+          <div class="hstat"><div class="k">Signal</div><div class="v ${sigCls}">${p.signal} <small>${(p.signal_confidence||0).toFixed(0)}%</small></div></div>
+          <div class="hstat"><div class="k">Last price</div><div class="v">₹${fmt(p.last_price)} <small class="${(p.day_change_perc||0)>=0?"up":"down"}">${pct(p.day_change_perc)}</small></div></div>
+          <div class="hstat"><div class="k">Target</div><div class="v up">${p.target != null ? "₹"+fmt(p.target) : "—"}</div></div>
+          <div class="hstat"><div class="k">Stop · R:R</div><div class="v down">${p.stop != null ? "₹"+fmt(p.stop) : "—"} <small style="color:var(--muted)">${p.rr != null ? p.rr+":1" : ""}</small></div></div>
+          <div class="hstat"><div class="k">Day Low–High</div><div class="v" style="font-size:14px">₹${fmt(p.expected_low)}–₹${fmt(p.expected_high)}</div></div>
+          <div class="hstat"><div class="k">Proj. Turnover</div><div class="v" style="font-size:16px">₹${fmtCr(p.proj_full_turnover_cr)} <small>Cr</small></div></div>
         </div>
       </div>
-      <div class="stats">
-        <div class="stat"><div class="k">Signal</div><div class="v ${sigCls}">${sig}<small> ${(p.signal_confidence??0).toFixed(0)}%</small></div></div>
-        <div class="stat"><div class="k">Last price</div><div class="v">₹${fmtCr(p.last_price)} <small class="${(p.day_change_perc||0)>=0?'up':'down'}">${pct(p.day_change_perc)}</small></div></div>
-        <div class="stat"><div class="k">Target</div><div class="v up">${p.target!=null?'₹'+fmtCr(p.target):'—'}</div></div>
-        <div class="stat"><div class="k">Stop-loss · R:R</div><div class="v down">${p.stop!=null?'₹'+fmtCr(p.stop):'—'} <small style="color:var(--muted)">${p.rr!=null?p.rr+':1':''}</small></div></div>
-        <div class="stat"><div class="k">Predicted day low – high</div><div class="v">₹${fmtCr(p.expected_low)} – ₹${fmtCr(p.expected_high)}</div></div>
-        <div class="stat"><div class="k">Proj. full-day turnover</div><div class="v">₹${fmtCr(p.proj_full_turnover_cr)} <small>Cr</small></div></div>
-        <div class="stat conf"><div class="k">Indicators</div>
-          <div class="v" style="font-size:13px">RSI ${p.rsi??'—'} · MACD ${p.macd_hist??'—'} · ADX ${p.adx??'—'} · ATR ${p.atr??'—'}</div></div>
+      <div style="margin-top:12px;font-size:11.5px;color:var(--faint);line-height:1.5">
+        RSI ${p.rsi??'—'} · MACD ${p.macd_hist??'—'} · ADX ${p.adx??'—'} · ATR ${p.atr??'—'} &nbsp;|&nbsp;
+        <b style="color:var(--muted)">Confidence ${p.confidence_pct||0}%</b> &nbsp;|&nbsp;
+        Not investment advice.
       </div>
-    </div>
-    <div style="margin-top:14px;font-size:12px;color:var(--faint);line-height:1.5">
-      <b style="color:var(--muted)">Buy/Sell is a lean, not a forecast.</b>
-      Direction is barely predictable intraday — see the backtested hit-rate below before trusting it.
-      The High/Low band is an expectation (≈${p.expected_range_pct||'—'}% range), not a guarantee. Not investment advice.
-    </div>
-   </div>`;
-  requestAnimationFrame(()=>{const f=$("#confFill");if(f)f.style.width=Math.max(3,Math.min(100,p.confidence_pct||0))+"%";});
-  $("#asOf").textContent=d.as_of?("updated "+new Date(d.as_of).toLocaleString()):"";
+    </div>`;
+  $("#mAsOf").textContent = d.as_of ? "updated " + new Date(d.as_of).toLocaleTimeString() : "";
 }
 
-let _lastRows=[], _filter="ALL";
-function renderTable(d){
-  _lastRows=(d&&d.top)||[];
-  if(!_lastRows.length){$("#tableSlot").innerHTML="";$("#rankCount").textContent="";return;}
-  $("#rankCount").textContent=`(${_lastRows.length} stocks)`;
-  drawCards();
+function renderTable(d) {
+  const rows = d?.top || [];
+  $("#rankCount").textContent = rows.length ? `(${rows.length} stocks)` : "";
+  if (!rows.length) { $("#tableSlot").innerHTML = ""; return; }
+  const trs = rows.map((r, i) => {
+    const sig = (r.signal || "NEUTRAL").toLowerCase();
+    const dc = (r.day_change_perc || 0) >= 0 ? "up" : "down";
+    return `<tr class="${i===0?"lead":""}">
+      <td><span class="rk ${i===0?"gold":""}">#${r.rank}</span></td>
+      <td class="sym">${r.symbol}</td>
+      <td class="r num">${"₹"+fmt(r.last_price)}</td>
+      <td class="r num ${dc}">${pct(r.day_change_perc)}</td>
+      <td><span class="sigtag ${sig}">${r.signal||"NEUTRAL"}</span></td>
+      <td class="r num up">${r.target != null ? "₹"+fmt(r.target) : "—"}</td>
+      <td class="r num down">${r.stop != null ? "₹"+fmt(r.stop) : "—"}</td>
+      <td class="r num">${r.rr != null ? r.rr+":1" : "—"}</td>
+      <td class="r num">${fmtCr(r.proj_full_turnover_cr)} Cr</td>
+    </tr>`;
+  }).join("");
+  $("#tableSlot").innerHTML = `<div class="tableCard"><table>
+    <thead><tr>
+      <th>Rank</th><th>Symbol</th><th class="r">Price</th><th class="r">Chg%</th>
+      <th>Signal</th><th class="r">Target</th><th class="r">Stop</th><th class="r">R:R</th>
+      <th class="r">Proj. Turnover</th>
+    </tr></thead><tbody>${trs}</tbody></table></div>`;
 }
-function drawCards(){
-  const rows=_lastRows.filter(r=>_filter==="ALL"?true:(r.signal===_filter));
-  const counts={ALL:_lastRows.length,BUY:_lastRows.filter(r=>r.signal==="BUY").length,SELL:_lastRows.filter(r=>r.signal==="SELL").length};
-  const fb=`<div class="filterbar">
-    ${["ALL","BUY","SELL"].map(f=>`<button class="fbtn ${_filter===f?'on':''}" onclick="setFilter('${f}')">${f} <span style="color:var(--faint)">${counts[f]}</span></button>`).join("")}
-    <span class="fcount">showing ${rows.length}</span></div>`;
-  const cards=rows.map(r=>{
-    const sg=(r.signal||"NEUTRAL").toLowerCase();
-    const dc=(r.day_change_perc||0)>=0?"up":"down";
-    return `<div class="scard ${sg}">
-      <div class="top"><span class="sy">${r.symbol} <span class="rkbadge">#${r.rank}</span></span>
-        <span class="sg ${sg}">${r.signal}${r.signal_confidence?` <span style="font-size:10px;color:var(--faint)">${r.signal_confidence}%</span>`:''}</span></div>
-      <div class="px">₹${fmtCr(r.last_price)} <span class="${dc}" style="font-size:12px">${pct(r.day_change_perc)}</span></div>
-      <div class="lvls">
-        <div class="lvl"><div class="lk">Target</div><div class="lv up">${r.target!=null?'₹'+fmtCr(r.target):'—'}</div></div>
-        <div class="lvl"><div class="lk">Stop</div><div class="lv down">${r.stop!=null?'₹'+fmtCr(r.stop):'—'}</div></div>
-        <div class="lvl"><div class="lk">R:R</div><div class="lv">${r.rr!=null?r.rr+':1':'—'}</div></div>
-      </div>
-      <div class="ind">${r.rsi!=null?`RSI ${r.rsi}`:''} ${r.macd_hist!=null?`· MACD ${r.macd_hist}`:''} ${r.adx!=null?`· ADX ${r.adx}`:''}</div>
-      <div class="proj">Exp. day ₹${fmtCr(r.expected_low)}–₹${fmtCr(r.expected_high)} · proj. turnover ₹${fmtCr(r.proj_full_turnover_cr)} Cr</div>
-    </div>`;}).join("");
-  $("#tableSlot").innerHTML=fb+`<div class="cardGrid">${cards}</div>`;
-}
-function setFilter(f){_filter=f;drawCards();}
-window.setFilter=setFilter;
 
-function renderBacktest(bt){
-  if(!bt||bt.error||!Object.keys(bt).length){
-    $("#btSlot").innerHTML=`<div class="empty reveal">No backtest yet — run
-      <code>python -m groww_predictor.build_dataset</code> then
-      <code>python -m groww_predictor.backtest</code> (needs Groww data access).</div>`;return;
+function renderBacktest(bt) {
+  if (!bt || bt.error) {
+    $("#btSlot").innerHTML = `<div class="empty">Run <code>npm run backtest</code> to see accuracy stats.</div>`; return;
   }
-  const order=["naive","analytic","lgbm"],names={naive:"Naive (raw open)",analytic:"Analytic projection",lgbm:"LightGBM ranker"};
-  const present=order.filter(k=>bt[k]);
-  let best=present[0];present.forEach(k=>{if((bt[k].actual1_in_pred3||0)>(bt[best].actual1_in_pred3||0))best=k;});
-  $("#btSlot").innerHTML=`<div class="btGrid">${present.map((k,i)=>{
-    const m=bt[k];
-    return `<div class="btCard reveal ${k===best?'best':''}" style="animation-delay:${.04*i}s">
-      <h3>${names[k]||k} ${k===best?'<span class="best-badge">★ BEST</span>':''}</h3>
-      <div class="btRow"><span class="k">Actual #1 in our top-3</span><span class="v">${(m.actual1_in_pred3*100).toFixed(0)}%</span></div>
-      <div class="btRow"><span class="k">Exact #1 hit</span><span class="v">${(m.top1_acc*100).toFixed(0)}%</span></div>
-      <div class="btRow"><span class="k">Top-3 overlap</span><span class="v">${(m.top3_jaccard*100).toFixed(0)}%</span></div>
-      <div class="btRow"><span class="k">Test days</span><span class="v" style="color:var(--faint)">${m.days}</span></div>
-    </div>`;}).join("")}</div>`;
+  const order = ["naive","analytic"], names = { naive:"Naive baseline", analytic:"Analytic model" };
+  const present = order.filter(k => bt[k]);
+  let best = present[0];
+  present.forEach(k => { if ((bt[k]?.actual1_in_pred3||0) > (bt[best]?.actual1_in_pred3||0)) best = k; });
+  $("#btSlot").innerHTML = `<div class="btGrid">${present.map((k,i) => {
+    const m = bt[k];
+    return `<div class="btCard ${k===best?"best":""} reveal" style="animation-delay:${.04*i}s">
+      <h3>${names[k]||k} ${k===best?'<span style="color:var(--gold);font-size:10px">★ BEST</span>':''}</h3>
+      <div class="btRow"><span class="k">Actual #1 in our top-3</span><span class="v">${((m.actual1_in_pred3||0)*100).toFixed(0)}%</span></div>
+      <div class="btRow"><span class="k">Exact #1 hit</span><span class="v">${((m.top1_acc||0)*100).toFixed(0)}%</span></div>
+      <div class="btRow"><span class="k">Top-3 overlap</span><span class="v">${((m.top3_jaccard||0)*100).toFixed(0)}%</span></div>
+      <div class="btRow"><span class="k">Test days</span><span class="v" style="color:var(--faint)">${m.days||0}</span></div>
+    </div>`;
+  }).join("")}</div>`;
 }
 
-async function loadHealth(){
-  try{const h=await getJSON("/health");
-    $("#hdot").className="dot live";$("#hstatus").textContent="predictor online";
-    $("#hmetric").textContent=h.metric||"—";$("#hmodel").textContent=h.model||"—";
-  }catch(e){$("#hdot").className="dot off";$("#hstatus").textContent="predictor offline";}
+async function loadMorning() {
+  try {
+    const d = await getJSON("/predict");
+    renderHero(d); renderTable(d);
+  } catch { renderHero(null); renderTable(null); }
+  try { renderBacktest(await getJSON("/backtest")); } catch { renderBacktest(null); }
 }
-async function loadPrediction(){try{renderHero(await getJSON("/predict"));}catch(e){renderHero(null);}}
-async function loadTable(){try{renderTable(await getJSON("/predict"));}catch(e){renderTable(null);}}
-async function loadBacktest(){try{renderBacktest(await getJSON("/backtest"));}catch(e){renderBacktest(null);}}
 
-function renderTrack(t){
-  if(!t||t.error){$("#trackSlot").innerHTML="";return;}
-  const dh=t.direction_hit_rate, bc=t.band_coverage;
-  const dhTxt=dh==null?"—":(dh*100).toFixed(0)+"%";
-  const bcTxt=bc==null?"—":(bc*100).toFixed(0)+"%";
-  const dhCls=dh==null?"":(dh>0.55?"up":(dh<0.5?"down":""));
-  const rows=(t.recent||[]).filter(r=>r.scored).slice(0,8);
-  const note = t.total_scored<10
-    ? `<div class="hint" style="margin-top:10px">Only ${t.total_scored} scored day(s) so far — needs ~15–20 before the hit-rate means anything. Keep it running.</div>` : "";
-  $("#trackSlot").innerHTML=`<div class="btGrid">
-    <div class="btCard ${dhCls==='up'?'best':''}"><h3>Buy/Sell direction</h3>
-      <div class="btRow"><span class="k">Hit-rate (calls correct)</span><span class="v ${dhCls}">${dhTxt}</span></div>
-      <div class="btRow"><span class="k">Directional calls scored</span><span class="v" style="color:var(--faint)">${t.directional_n||0}</span></div>
-      <div class="btRow"><span class="k">vs a coin flip</span><span class="v" style="color:var(--faint)">50%</span></div></div>
-    <div class="btCard"><h3>High/Low band</h3>
-      <div class="btRow"><span class="k">Days inside band</span><span class="v">${bcTxt}</span></div>
-      <div class="btRow"><span class="k">Days scored</span><span class="v" style="color:var(--faint)">${t.total_scored||0}</span></div></div>
-    <div class="btCard"><h3>Log</h3>
-      <div class="btRow"><span class="k">Predictions logged</span><span class="v">${t.total_logged||0}</span></div>
-      <div class="btRow"><span class="k">Scored</span><span class="v" style="color:var(--faint)">${t.total_scored||0}</span></div></div>
-  </div>${note}
-  ${rows.length?`<div class="tableCard reveal" style="margin-top:14px"><table>
-    <thead><tr><th>Date</th><th>Pick</th><th>Call</th><th class="r">Entry</th><th class="r">Close</th><th class="r">Move</th><th>Right?</th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td class="num">${r.date}</td><td class="sym">${r.pick}</td>
-      <td style="color:${r.signal==='BUY'?'var(--up)':(r.signal==='SELL'?'var(--down)':'var(--faint)')}">${r.signal}</td>
-      <td class="r num">${r.entry!=null?'₹'+fmtCr(r.entry):'—'}</td>
-      <td class="r num">${r.actual_close!=null?'₹'+fmtCr(r.actual_close):'—'}</td>
-      <td class="r num ${(r.move_pct||0)>=0?'up':'down'}">${r.move_pct!=null?pct(r.move_pct):'—'}</td>
-      <td>${r.direction_correct==null?'—':(r.direction_correct?'✓':'✗')}</td></tr>`).join("")}</tbody></table></div>`:""}`;
-}
-async function loadTrack(){try{renderTrack(await getJSON("/track"));}catch(e){renderTrack(null);}}
-
-async function loadAll(){await loadHealth();const d=await getJSON("/predict").catch(()=>null);renderHero(d);renderTable(d);loadTrack();loadBacktest();}
-
-$("#refreshBtn").onclick=loadAll;
-$("#runBtn").onclick=async()=>{
-  const b=$("#runBtn");b.disabled=true;b.textContent="⏳ Scanning the opening window…";
-  try{const d=await getJSON("/predict/run",{method:"POST"});renderHero(d);renderTable(d);
-      toast("Prediction updated — "+(d.most_traded_pick?.symbol||""));}
-  catch(e){toast("Couldn't run: check credentials & that the market is open",true);}
-  finally{b.disabled=false;b.textContent="▶ Run live prediction (09:25)";}
+$("#runBtn").onclick = async () => {
+  const b = $("#runBtn"); b.disabled = true; b.textContent = "⏳ Scanning opening window…";
+  try {
+    const d = await getJSON("/predict/run", { method: "POST" });
+    renderHero(d); renderTable(d);
+    toast("Morning prediction updated — " + (d.most_traded_pick?.symbol || ""));
+  } catch (e) { toast("Failed: " + e.message, true); }
+  finally { b.disabled = false; b.textContent = "▶ Run morning prediction"; }
 };
+$("#mRefreshBtn").onclick = loadMorning;
 
-loadAll();
-setInterval(loadPrediction,30000); // light auto-refresh of the cached pick
+// ══════════════ TRACK RECORD ══════════════
+function renderTrack(t) {
+  if (!t || t.error) { $("#trackSlot").innerHTML = ""; return; }
+  const dh = t.direction_hit_rate, bc = t.band_coverage;
+  const dhTxt = dh == null ? "—" : (dh*100).toFixed(0)+"%";
+  const bcTxt = bc == null ? "—" : (bc*100).toFixed(0)+"%";
+  const dhCls = dh == null ? "" : (dh > 0.55 ? "up" : dh < 0.45 ? "down" : "");
+  const rows = (t.recent||[]).filter(r => r.scored).slice(0,10);
+  const note = t.total_scored < 10
+    ? `<div class="hint" style="margin-top:10px">Only ${t.total_scored} scored day(s) — needs ~15–20 for meaningful stats.</div>` : "";
+  $("#trackSlot").innerHTML = `
+    <h2>Live track record <span>your measured accuracy</span></h2>
+    <div class="btGrid">
+      <div class="btCard ${dhCls==="up"?"best":""}"><h3>Buy/Sell direction</h3>
+        <div class="btRow"><span class="k">Hit-rate</span><span class="v ${dhCls}">${dhTxt}</span></div>
+        <div class="btRow"><span class="k">Calls scored</span><span class="v" style="color:var(--faint)">${t.directional_n||0}</span></div>
+        <div class="btRow"><span class="k">Coin flip</span><span class="v" style="color:var(--faint)">50%</span></div></div>
+      <div class="btCard"><h3>High/Low band</h3>
+        <div class="btRow"><span class="k">Days inside band</span><span class="v">${bcTxt}</span></div>
+        <div class="btRow"><span class="k">Days scored</span><span class="v" style="color:var(--faint)">${t.total_scored||0}</span></div></div>
+      <div class="btCard"><h3>Log</h3>
+        <div class="btRow"><span class="k">Predictions logged</span><span class="v">${t.total_logged||0}</span></div>
+        <div class="btRow"><span class="k">Scored</span><span class="v" style="color:var(--faint)">${t.total_scored||0}</span></div></div>
+    </div>${note}
+    ${rows.length ? `<div class="tableCard reveal" style="margin-top:14px"><table>
+      <thead><tr><th>Date</th><th>Pick</th><th>Signal</th><th class="r">Entry</th><th class="r">Close</th><th class="r">Move</th><th>Correct?</th></tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td class="num">${r.date}</td><td class="sym">${r.pick}</td>
+        <td style="color:${r.signal==="BUY"?"var(--up)":r.signal==="SELL"?"var(--down)":"var(--faint)"}">${r.signal}</td>
+        <td class="r num">${r.entry != null ? "₹"+fmt(r.entry) : "—"}</td>
+        <td class="r num">${r.actual_close != null ? "₹"+fmt(r.actual_close) : "—"}</td>
+        <td class="r num ${(r.move_pct||0)>=0?"up":"down"}">${r.move_pct != null ? pct(r.move_pct) : "—"}</td>
+        <td>${r.direction_correct == null ? "—" : (r.direction_correct ? "✅" : "❌")}</td>
+      </tr>`).join("")}</tbody></table></div>` : ""}`;
+}
+
+async function loadTrack() {
+  try { renderTrack(await getJSON("/track")); } catch { renderTrack(null); }
+}
+
+// ── Health ──
+async function loadHealth() {
+  try {
+    const h = await getJSON("/health");
+    $("#hdot").className = "dot live"; $("#hstatus").textContent = "online";
+    $("#hmodel").textContent = h.active_model || h.model || "—";
+  } catch {
+    $("#hdot").className = "dot off"; $("#hstatus").textContent = "offline";
+  }
+}
+
+// ── Init ──
+loadHealth();
+loadIntraday();
+// Auto-refresh intraday every 2 minutes
+setInterval(() => { if (_currentTab === "intraday") loadIntraday(); }, 120000);
 </script>
 </body>
 </html>

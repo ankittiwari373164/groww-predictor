@@ -1,6 +1,6 @@
 'use strict';
 const cron = require('node-cron');
-const fs = require('fs');
+const fs   = require('fs');
 const { CFG } = require('./config');
 
 const TZ = { timezone: 'Asia/Kolkata' };
@@ -25,11 +25,20 @@ async function jobDataset() {
   try {
     const { GrowwClient } = require('./growwClient');
     const { buildDataset } = require('./buildDataset');
-    const { backtest } = require('./backtest');
+    const { backtest }     = require('./backtest');
     const client = await new GrowwClient().init();
     await buildDataset(client);
     backtest();
   } catch (e) { console.log(`[sched] dataset failed: ${e.message}`); }
+}
+async function jobIntraday() {
+  try {
+    const { GrowwClient } = require('./growwClient');
+    const { runScan, isMarketHours } = require('./intradayScanner');
+    if (!isMarketHours()) return;
+    const client = await new GrowwClient().init();
+    await runScan(client);
+  } catch (e) { console.log(`[sched] intraday failed: ${e.message}`); }
 }
 
 function startScheduler() {
@@ -38,10 +47,12 @@ function startScheduler() {
     console.log('[sched] no dataset — building on boot (background)');
     jobDataset();
   }
-  cron.schedule('25 9 * * 1-5', jobPredict, TZ);
-  cron.schedule('0 16 * * 1-5', jobScore, TZ);
-  cron.schedule('0 18 * * 0', jobDataset, TZ);
-  console.log('[sched] started — predict 09:25, score 16:00 (Mon-Fri IST), rebuild Sun 18:00 IST');
+  cron.schedule('25 9  * * 1-5', jobPredict,  TZ);  // 09:25 — morning rank
+  cron.schedule('0  16 * * 1-5', jobScore,    TZ);  // 16:00 — end-of-day score
+  cron.schedule('0  18 * * 0',   jobDataset,  TZ);  // Sun 18:00 — weekly rebuild
+  // Intraday scan every 2 minutes during market hours
+  cron.schedule('*/2 * * * 1-5', jobIntraday, TZ);
+  console.log('[sched] started — predict 09:25, intraday scan every 2 min, score 16:00 (Mon-Fri IST), rebuild Sun 18:00 IST');
 }
 
-module.exports = { startScheduler, jobPredict, jobScore, jobDataset };
+module.exports = { startScheduler, jobPredict, jobScore, jobDataset, jobIntraday };

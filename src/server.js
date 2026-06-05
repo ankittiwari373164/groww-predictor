@@ -1,9 +1,10 @@
 'use strict';
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const { CFG } = require('./config');
+const fs      = require('fs');
+const path    = require('path');
+const { CFG }         = require('./config');
 const { loadBestModel } = require('./model');
+const { loadIntraday }  = require('./intradayScanner');
 
 const app = express();
 app.use((req, res, next) => { res.header('Access-Control-Allow-Origin', '*'); next(); });
@@ -28,9 +29,10 @@ function cleanNonFinite(o) {
   return o;
 }
 
+// ── Prediction (morning ranking) ──────────────────────────────────────────────
 app.get('/predict', (req, res) => {
   try { res.json(cleanNonFinite(JSON.parse(fs.readFileSync(CFG.paths.predictions, 'utf8')))); }
-  catch { res.json({ error: 'no prediction yet — POST /predict/run after 09:25 IST' }); }
+  catch { res.json({ error: 'no prediction yet — run after 09:25 IST' }); }
 });
 
 app.post('/predict/run', async (req, res) => {
@@ -42,10 +44,28 @@ app.post('/predict/run', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Intraday ORB scanner ───────────────────────────────────────────────────────
+app.get('/intraday', (req, res) => {
+  const data = loadIntraday();
+  if (data) res.json(cleanNonFinite(data));
+  else res.json({ error: 'no intraday scan yet — click Scan or wait for auto-refresh during market hours' });
+});
+
+app.post('/intraday/scan', async (req, res) => {
+  try {
+    const { GrowwClient } = require('./growwClient');
+    const { runScan }     = require('./intradayScanner');
+    const client = await new GrowwClient().init();
+    res.json(cleanNonFinite(await runScan(client)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Track record ──────────────────────────────────────────────────────────────
 app.get('/track', (req, res) => {
   try { res.json(require('./tracker').summary()); } catch (e) { res.json({ error: e.message }); }
 });
 
+// ── Backtest ──────────────────────────────────────────────────────────────────
 app.get('/backtest', (req, res) => {
   if (!fs.existsSync(CFG.paths.dataset)) return res.json({ error: 'no dataset — run npm run build-dataset' });
   try { res.json(require('./backtest').backtest()); } catch (e) { res.json({ error: e.message }); }
