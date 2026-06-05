@@ -1,0 +1,27 @@
+{
+  "name": "groww-predictor",
+  "version": "1.0.0",
+  "description": "Most-traded NSE stock predictor + buy/sell signals via the Groww API (Node.js port)",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "predict": "node cli.js predict",
+    "score": "node cli.js score",
+    "build-dataset": "node cli.js build",
+    "backtest": "node cli.js backtest",
+    "selftest": "node selftest.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "node-cron": "^3.0.3",
+    "otplib": "^12.0.1",
+    "papaparse": "^5.4.1",
+    "yahoo-finance2": "^3.15.2"
+  }
+}
